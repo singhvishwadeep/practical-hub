@@ -5,7 +5,7 @@ The FROM instruction specifies the base image to use for creating the new image.
 > FROM ubuntu:20.04  
 
 # LABEL
-> LABEL adds metadata to an image, such as a description, version, or maintainer details.  
+LABEL adds metadata to an image, such as a description, version, or maintainer details.  
 > LABEL maintainer="you@example.com"  
 > LABEL version="1.0"  
 > LABEL description="A simple Ubuntu-based Docker image."  
