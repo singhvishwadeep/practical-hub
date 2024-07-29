@@ -55,8 +55,11 @@ The ENTRYPOINT instruction is similar to CMD but is not overridden when addition
 Volumes can be managed by Docker, and they are typically stored outside of the container's writable layer. This isolation helps improve performance and data management, and also ensures that the data is not accidentally lost when a container is removed.  
 VOLUME creates a mount point with the specified path and marks it as holding externally mounted volumes from the host or other containers. This declares /data as a mount point.  
 VOLUME /data specifies that the directory /data inside the container will be mounted as a volume. This is where log files are stored for example.  
+
 > VOLUME /data  
+
 Now, you use above VOLUME at the time of creating container to map it with host machine directory. You can run a container and map the volume to a specific directory on the host machine:  
+
 > $ sudo docker run -d -v /home/admin/data:/data -p 3306:3306 myimage:tag8.0  
 
 # USER
