@@ -68,8 +68,8 @@ or
 > $ sudo docker ps --filter network=net1 [list the containers running on network net1]  
 
 # others
-Create Network for docker container to run as a family
-> $ sudo docker network create my_network
+Create Network for docker container to run as a family  
+> $ sudo docker network create my_network  
 Running a Command in a Container  
 > $ sudo docker run -it ubuntu /bin/bash    
 Stopping a container  
