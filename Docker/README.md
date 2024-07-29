@@ -35,6 +35,17 @@ or
 > $ sudo docker images --filter "before=image1" [list docker images created before image1]  
 > $ sudo docker images --filter "after=image1" [list docker images created after image1]  
 
+# delete docker image
+> $ sudo docker rm imagename:tag
+> $ sudo docker rm -f imagename:tag
+Removing Dangling Images: Dangling images are layers that are not tagged and are not referenced by any container.  
+> $ docker image prune  
+This will remove all dangling images. If you want to remove all unused images, including those associated with stopped containers.  
+> $ docker system prune -a  
+Remove an Image by ID:  
+> $ sudo docker rmi <image_id>
+
+
 # docker create containers
 --name [name the container]  
 > $ sudo docker run --name mycontainer myimage:tag  
