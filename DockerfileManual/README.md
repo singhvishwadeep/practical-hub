@@ -23,6 +23,7 @@ $ sudo docker run -p 8080:8080 myapp:latest
 # RUN
 The RUN instruction executes commands in a new layer on top of the current image and commits the results. It is commonly used to install software packages. This line updates the package list and installs curl and vim.  
 > RUN apt-get update && apt-get install -y curl vim  
+> RUN ["<executable>", "<param1>", "<param2>"]  
 
 # COPY / ADD
 COPY and ADD are used to copy files from the host system to the Docker image. COPY is generally preferred because it has a more straightforward behavior. ADD has some additional features like extracting TAR files and handling URLs. This command copies the current directory from the host machine to the /app directory in the Docker image.  
@@ -43,19 +44,20 @@ ENV sets environment variables. This sets the APP_ENV environment variable to pr
 # CMD
 The CMD instruction specifies the default command to run when the container starts. If a different command is provided when starting the container, the CMD will be overridden. This runs python app.py when the container starts.  
 > CMD ["python", "app.py"]  
+> CMD ["<executable>","<param1>","<param2>"]
 
 # ENTRYPOINT
 The ENTRYPOINT instruction is similar to CMD but is not overridden when additional command-line arguments are provided.  
 > ENTRYPOINT ["python", "app.py"]  
-  
-You can also use CMD in combination with ENTRYPOINT to provide default arguments that can be overridden. In this case, app.py --help is run by default, but you can override --help with other arguments.  
-> ENTRYPOINT ["python", "app.py"]  
-> CMD ["--help"]  
-
+> ENTRYPOINT ["<executable>", "<param1>", "<param2>"]  
 
 # VOLUME
+Volumes can be managed by Docker, and they are typically stored outside of the container's writable layer. This isolation helps improve performance and data management, and also ensures that the data is not accidentally lost when a container is removed.  
 VOLUME creates a mount point with the specified path and marks it as holding externally mounted volumes from the host or other containers. This declares /data as a mount point.  
+VOLUME /data specifies that the directory /data inside the container will be mounted as a volume. This is where log files are stored for example.  
 > VOLUME /data  
+Now, you use above VOLUME at the time of creating container to map it with host machine directory. You can run a container and map the volume to a specific directory on the host machine:  
+> $ sudo docker run -d -v /home/admin/data:/data -p 3306:3306 myimage:tag8.0  
 
 # USER
 The USER instruction sets the user name or UID to use when running the image. This switches to the appuser user.  
