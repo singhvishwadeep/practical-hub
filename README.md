@@ -8,35 +8,35 @@ copy the content of file in github -> Settings -> SSH & GPG Keys -> Add new SSH 
 Note: Add you .pub file (means public key) your private key (id_rsa file) will remain on your machine.  
 Note: If you private key is changed/removed/re-run ssh-keygen command, then public key needs to be updated again  
 
-# Docker
-Directory: Docker
+# Docker [ongoing]
+Directory: Docker  
 
-# Dockerfile
-Directory: DockerfileManual
+# Dockerfile [ongoing]
+Directory: DockerfileManual  
+
+# Docker Compose [ongoing]
+Directory: Docker-Compose  
 
 # Linux
-Directory: Linux
-
-# Docker Compose
-Directory: Docker-Compose
+Directory: Linux  
 
 # Kubernetes
-Directory: Kubernetes
+Directory: Kubernetes  
 
 # Git
-Directory: Git
+Directory: Git  
 
 # Python
-Directory: Python
+Directory: Python  
 
 # AWS
-Directory: AWS
+Directory: AWS  
 
 # Shell
-Directory: Shell
+Directory: Shell  
 
 # Perl
-Directory: Perl
+Directory: Perl  
 
 # TCL
-Directory: TCL
+Directory: TCL  
