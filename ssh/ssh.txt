@@ -1,0 +1,519 @@
+ssh-copy-id user@server -> add to ~/.ssh/authorized_keys (Stores public keys of SSH clients allowed to connect)
+you can ssh without password
+
+ssh-add is a command-line utility that adds your private SSH keys to the SSH authentication agent (ssh-agent), so you don’t have to enter the passphrase every time you use SSH.
+Understanding ssh-agent and ssh-add
+When working with SSH keys, you might need to enter a passphrase every time you use them. ssh-agent and ssh-add help manage SSH keys efficiently by keeping them in memory and providing authentication without repeatedly entering the passphrase.
+sh-agent is a background process that stores private SSH keys in memory and handles authentication requests from SSH clients.
+
+How It Works:
+You start ssh-agent, which runs in the background.
+You use ssh-add to load SSH keys into the agent.
+When an SSH connection is made, ssh-agent provides the key, avoiding the need to enter the passphrase again.
+
+Before using ssh-add, make sure ssh-agent is running:
+eval "$(ssh-agent -s)"
+
+ssh-add is used to add SSH private keys to ssh-agent so they can be used without re-entering passphrases.
+Basic ssh-add Commands:
+Add a default SSH key (id_rsa) to the agent:
+ssh-add ~/.ssh/id_rsa
+
+ssh-add -l -> list loaded keys
+ssh-add -d ~/.ssh/id_rsa -> remove specific keys
+ssh-add -D -> remove all keys
+
+How ssh-agent and ssh-add Work Together
+Start ssh-agent to manage SSH keys.
+Use ssh-add to load your private keys into ssh-agent.
+Connect to SSH servers or use Git over SSH without entering the passphrase every time.
+
+
+But, why i have to type password when using keys? because thats the point of using ssh-agent
+> key might have password
+> sever dont have public key
+> wrong file permissions
+> ssh-agent not forwarding key, then add in ssh config - 
+Host *
+    ForwardAgent yes
+then restart sshd -> sudo systemctl restart sshd
+
+
+> The Server is Not Allowing Public Key Authentication, add in ssh config
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+then restart sshd -> sudo systemctl restart sshd
+
+
+Explicitly specify the key and user
+ssh -i ~/.ssh/id_rsa user@server
+
+OR set it permanently in ~/.ssh/config:
+Host server
+    User your_user
+    IdentityFile ~/.ssh/id_rsa
+
+
+
+What is ssh -A? (SSH Agent Forwarding)
+The ssh -A option enables SSH Agent Forwarding, allowing you to use your local SSH keys on a remote server without copying them to that server.
+
+How It Works:
+You have private keys loaded in ssh-agent on your local machine.
+When you ssh -A into a remote server, the server can use your local agent to authenticate without storing your private key on the remote machine.
+If you then SSH from the remote server to another server, your local SSH key will still be used.
+When to Use ssh -A
+Jumping through multiple SSH servers (e.g., Bastion Hosts).
+Accessing Git repositories from a remote machine without copying your private key.
+Using SSH-based authentication inside a remote container or VM.
+
+
+Make Agent Forwarding Permanent
+To always enable -A, add this to ~/.ssh/config:
+Host server1
+    ForwardAgent yes
+Now, running ssh user@server1 will automatically use -A.
+
+
+Security Warning for ssh -A
+If server1 is compromised, it can use your SSH agent to authenticate on your behalf to other servers.
+To reduce risk, use -A only on trusted servers.
+Instead of ssh -A, you can use a jump host (ProxyJump):
+Host server2
+    ProxyJump user@server1
+	
+example: ssh -J admin@10.3.10.27 admin@10.3.10.30 [will jump from one machine to next machine]
+ssh -J user@jump-server user@target-server
+
+Permanent Setup in ~/.ssh/config
+To avoid typing -J every time, add this to ~/.ssh/config:
+Host target-server
+    User your-user
+    ProxyJump user@jump-server
+Now, you can connect with:
+ssh target-server
+
+Multiple Jump Servers (Chained Proxies)
+If you need to jump through multiple servers, separate them with commas:
+ssh -J user@jump1,user@jump2 user@target-server
+Or in ~/.ssh/config:
+Host target-server
+    ProxyJump user@jump1, user@jump2
+
+
+ssh-agent
+What is ssh-agent?
+ssh-agent is a background process that stores your SSH private keys in memory, so you don’t have to enter your passphrase every time you use SSH.
+It is mainly used when:
+You have an SSH key with a passphrase, and you don’t want to enter it repeatedly.
+You need to use the same key multiple times in a session (e.g., pushing code to GitHub, SSHing into multiple servers).
+You need to forward your SSH key to another system (ssh -A).
+How ssh-agent Works
+Start ssh-agent, which runs in the background and stores keys.
+Add your private key (id_rsa) to ssh-agent using ssh-add.
+When you SSH into a server, ssh-agent provides the key automatically without asking for a password.
+
+Start ssh-agent
+Run the following command:
+eval "$(ssh-agent -s)"
+Output:
+Agent pid 12345
+This starts ssh-agent and sets environment variables so your terminal can use it.
+
+ Add Your Private Key to ssh-agent
+Now, add your SSH private key (id_rsa) so you don’t have to enter the passphrase repeatedly:
+ssh-add ~/.ssh/id_rsa
+
+Test SSH Authentication
+Try connecting to a server without typing a password:
+ssh user@server
+If everything is set up correctly, SSH will log in without asking for your key’s passphrase.
+
+How to Use ssh-agent with Multiple Sessions
+If you open a new terminal, ssh-agent won’t know about your added keys. To reuse it, run:
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa
+
+Or, store the agent info in a file and reuse it:
+ssh-agent > ~/.ssh-agent-info
+source ~/.ssh-agent-info
+ssh-add ~/.ssh/id_rsa
+
+How to Remove a Key from ssh-agent. If you want to remove a key from ssh-agent:
+ssh-add -d ~/.ssh/id_rsa
+ssh-add -D [remove all keys]
+
+Kill ssh-agent: eval "$(ssh-agent -k)"
+Output:
+Agent pid 12345 killed
+
+How to Make ssh-agent Persistent After Reboot
+To automatically start ssh-agent and add keys on login, add this to your ~/.bashrc or ~/.zshrc:
+if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_rsa
+fi
+Now, every time you open a terminal, ssh-agent will start and add your key.
+
+List all added keys:
+ssh-add -l	[List loaded keys]
+
+Not All Keys in ~/.ssh/ Should Be Used Automatically
+You may have multiple SSH keys (id_rsa, id_ed25519, github_key, etc.), but you might not want to use all of them for every connection. ssh-agent allows you to load only the keys you need.
+
+
+Automatically Load Keys on Login
+Add this to ~/.bashrc or ~/.zshrc so ssh-agent runs automatically and loads your key:
+if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_rsa
+fi
+Now, every time you open a new terminal, your SSH key is automatically added.
+
+Option 2: Use ~/.ssh/config to Load Specific Keys
+Instead of using ssh-agent, tell SSH to use a specific key:
+
+Host github.com
+    IdentityFile ~/.ssh/github_key
+    IdentitiesOnly yes
+
+Host myserver
+    IdentityFile ~/.ssh/id_rsa
+Now, SSH will automatically use the correct key without needing ssh-add.
+
+
+
+What is ssh-keygen?
+ssh-keygen is a command-line tool used to generate, manage, and convert SSH key pairs for secure authentication in SSH (Secure Shell).
+It creates two files:
+Public Key (id_rsa.pub) → Shared with servers for authentication
+Private Key (id_rsa) → Kept secret on your local machine
+
+Why Use ssh-keygen?
+✅ Secure passwordless login with SSH keys
+✅ Stronger security than passwords
+✅ Works for GitHub, GitLab, servers, cloud instances
+✅ Can generate different key types (RSA, Ed25519, ECDSA, etc.)
+
+Generate a Key Pair: Run the following command:
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+-t rsa → Specifies key type (RSA)
+-b 4096 → Sets key length (4096 bits for better security)
+-C "your_email@example.com" → Adds a comment (helps identify keys)
+
+Set a Passphrase (Optional but Recommended): You'll see:
+Enter passphrase (empty for no passphrase):
+✅ Enter a passphrase for extra security
+✅ Or press Enter to create a key without a passphrase
+If you set a passphrase, you’ll need to enter it when using the key unless you use ssh-agent.
+
+Adding Your Public Key to a Server: To use your key for SSH login:
+Copy the public key to the remote server:
+ssh-copy-id user@server
+(If ssh-copy-id isn’t available, manually append id_rsa.pub to ~/.ssh/authorized_keys on the server.)
+
+Different Key Types (-t option)
+RSA (default)	s
+sh-keygen -t rsa -b 4096	
+Strong & widely supported	Larger key size needed for security
+
+Ed25519
+ssh-keygen -t ed25519	
+Faster, shorter key, secure	Not supported on very old systems
+
+ECDSA
+ssh-keygen -t ecdsa -b 521
+Smaller key size, fast	Less secure than Ed25519
+
+DSA (deprecated)
+ssh-keygen -t dsa	None	DO NOT USE (weak security)
+
+Which Key Type to Choose?
+✅ Use ed25519 if possible (modern, fast, strong)
+✅ Use rsa -b 4096 for compatibility
+
+Convert OpenSSH key to PEM format for use with certain applications:
+ssh-keygen -m PEM -t rsa -b 4096 -C "your_email@example.com"
+
+Generate a Key with a Custom Name
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/my_custom_key
+Saves as my_custom_key (private) and my_custom_key.pub (public).
+
+Check an Existing Key’s Fingerprint
+ssh-keygen -l -f ~/.ssh/id_rsa.pub
+Outputs something like:
+2048 SHA256:abcdefghij1234567890 user@hostname (RSA)
+
+Regenerate Public Key from Private Key: Lost your .pub file? Regenerate it:
+ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+
+Change the Passphrase of an Existing Key This updates the passphrase without generating a new key.
+ssh-keygen -p -f ~/.ssh/id_rsa
+
+
+What is ssh-keyscan?
+ssh-keyscan is a command-line tool used to fetch the public SSH host keys of a remote server.
+It is useful for: 
+Verifying a server’s identity before connecting.
+Automatically adding known hosts to the ~/.ssh/known_hosts file.
+Collecting SSH fingerprints to prevent MITM (Man-in-the-Middle) attacks.
+
+Why Use ssh-keyscan?
+✅ Automates the process of adding SSH host keys.
+✅ Prevents "Host Key Verification Failed" errors when connecting to a new server.
+✅ Verifies SSH fingerprints before establishing trust.
+✅ Works with multiple hosts at once.
+
+known_hosts: Stores public keys of SSH servers you connect to
+ssh-keyscan server_ip >> ~/.ssh/known_hosts
+
+When you add it, then No "host authenticity" prompt appears.
+
+How It Works
+Whenever you connect to a new SSH server, SSH checks if its key is in ~/.ssh/known_hosts.
+
+If the key matches, the connection proceeds.
+If the key is missing or changed, SSH shows a warning:
+WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
+This could indicate a MITM attack or a server reinstallation.
+👉 Using ssh-keyscan prevents these warnings by pre-loading trusted keys.
+
+known_hosts:
+You can automatically add a server’s key to known_hosts in several ways:
+1. Use StrictHostKeyChecking=no (No Prompt) [This can be risky as it accepts any key without verification.]
+This will add the server’s key to known_hosts without asking for confirmation:
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=~/.ssh/known_hosts user@server
+
+2. Instead of connecting first, you can fetch the server’s key and add it manually:
+ssh-keyscan -H server_ip >> ~/.ssh/known_hosts
+-H: Hashes the hostname for privacy.
+
+3. Automatic for All Connections in SSH config file (~/.ssh/config) 
+Host *
+    StrictHostKeyChecking accept-new
+
+
+ssh-keyscan: ssh-keyscan is a command-line tool that collects the public SSH host keys from one or multiple remote servers. It is useful for pre-populating the known_hosts file to avoid interactive prompts when connecting via SSH.
+Automates adding trusted SSH keys to known_hosts before connecting.
+Prevents "host key verification" prompts during automation or scripting.
+Improves security by checking a server’s key before connecting.
+
+
+Check a Server’s SSH Key Without Adding It:
+ssh-keyscan server_ip
+
+Specify a Host and Port
+By default, ssh-keyscan checks port 22. To scan a different port:
+ssh-keyscan -p 2222 example.com
+
+
+Scan Multiple Hosts at Once
+ssh-keyscan example.com github.com google.com
+Useful for adding multiple servers to known_hosts at once.
+
+Specify the Key Type
+Fetch only RSA keys:
+ssh-keyscan -t rsa example.com
+Supported key types: rsa, dsa, ecdsa, ed25519
+
+Save Output to a File
+ssh-keyscan example.com > my_known_hosts
+Later, you can append it to the system’s known_hosts:
+cat my_known_hosts >> ~/.ssh/known_hosts
+
+Get Only the Fingerprint
+ssh-keyscan example.com | ssh-keygen -l -f -
+This converts the raw key into a fingerprint:
+2048 SHA256:abcdefghij1234567890 example.com (RSA)
+
+Automatically Add Keys to known_hosts
+To scan and add multiple hosts, use:
+ssh-keyscan -H github.com bitbucket.org >> ~/.ssh/known_hosts
+-H → Hashes hostnames in known_hosts for extra security.
+>> → Appends to ~/.ssh/known_hosts without overwriting existing entries.
+
+When to Use ssh-keyscan?
+First time connecting to a server	because Preload known hosts to avoid prompts
+Automating deployments (Ansible, CI/CD, scripts)	because 	Automatically trust remote hosts
+Checking if a server changed its key	because 	Detect potential MITM attacks
+Connecting to a public service like GitHub	because 	Avoid manual intervention in scripts
+
+What is ssh-copy-id?
+ssh-copy-id is a command-line utility used to copy a public SSH key from a local machine to a remote server's ~/.ssh/authorized_keys file. This enables passwordless SSH login, improving security and convenience. Security Benefits of ssh-copy-id
+✅ Prevents brute-force attacks – No password authentication needed.
+✅ Faster login – No need to type a password every time.
+✅ More secure – Uses public-key cryptography instead of passwords.
+
+If ssh-copy-id Permission denied (publickey)
+Ensure the remote server allows key authentication by checking:
+cat /etc/ssh/sshd_config | grep "PubkeyAuthentication"
+If it's set to no, change it to yes and restart SSH:
+sudo systemctl restart sshd
+
+
+SSH config file (~/.ssh/config): Stores per-user SSH settings
+Server-Side SSH Configurations (Used by sshd)
+/etc/ssh/sshd_config	Server configuration file	Controls SSH server behavior
+/etc/ssh/ssh_config	Global client config file	Default SSH client settings for all users
+
+touch ~/.ssh/config
+chmod 600 ~/.ssh/config  # Set correct permissions
+
+Basic ssh config file:
+Host myserver
+    HostName 192.168.1.100
+    User myuser
+    Port 2222
+    IdentityFile ~/.ssh/id_rsa
+Now instead of ssh -i ~/.ssh/id_rsa -p 2222 myuser@192.168.1.100
+you can say: ssh myserver
+
+Multiple Host enteries - 
+Host work
+    HostName work.example.com
+    User workuser
+    IdentityFile ~/.ssh/work_rsa
+
+Host home
+    HostName home.example.com
+    User homeuser
+    IdentityFile ~/.ssh/home_rsa
+
+Using wild cards in hostname:
+Host *.example.com
+    User commonuser
+    IdentityFile ~/.ssh/common_rsa
+
+Specifying an SSH Proxy (Jump Host): If you need to access a server through a jump host, use:
+Host internal-server
+    HostName 192.168.2.50
+    ProxyJump user@bastion.example.com
+
+Now, running ssh internal-server will automatically connect via bastion.example.com.
+
+Enabling Keep-Alive to Prevent Disconnects
+If your SSH sessions time out, use:
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 5
+This sends keep-alive packets every 60 seconds to prevent disconnection.
+
+
+Disabling SSH Key Checking (For Untrusted Hosts)
+If you're connecting to temporary servers and don’t want host key warnings:
+Host temporary
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+Warning: This is insecure—only use it for temporary, non-sensitive connections.
+
+
+Testing and Debugging SSH Config: After modifying your SSH config, test it with:
+ssh -v myserver  # Verbose mode
+This will show debug information about which settings are being applied.
+
+other configs - 
+ForwardAgent	Enables SSH agent forwarding	ForwardAgent yes
+ForwardX11	Enables X11 forwarding	ForwardX11 yes
+Port	Sets the SSH listening port	Port 2222
+ListenAddress	Specifies the IPs SSH should listen on	ListenAddress 192.168.1.1
+PermitRootLogin	Controls root login (yes, no, prohibit-password)	PermitRootLogin no
+PasswordAuthentication	Enables/disables password authentication	PasswordAuthentication no
+PubkeyAuthentication	Enables public key authentication	PubkeyAuthentication yes
+AuthorizedKeysFile	Specifies the file for storing SSH keys	AuthorizedKeysFile .ssh/authorized_keys
+AllowUsers	Restricts SSH access to specific users	AllowUsers alice bob
+DenyUsers	Blocks specific users from SSH access	DenyUsers hacker
+AllowGroups	Only allow specific groups to SSH	AllowGroups sshusers
+DenyGroups	Deny SSH access to specific groups	DenyGroups guests
+MaxAuthTries	Limits failed authentication attempts	MaxAuthTries 3
+MaxSessions	Limits the number of concurrent SSH sessions	MaxSessions 10
+
+When changes done - 
+sudo systemctl restart sshd  # On systemd-based systems
+sudo service ssh restart     # On older systems
+
+Disable Root Login - Prevents direct root SSH access.
+PermitRootLogin no
+
+Disable Password Authentication (Key Only): Forces SSH key authentication.
+PasswordAuthentication no
+PubkeyAuthentication yes
+
+Change the Default SSH Port. Protects against brute-force attacks.
+Port 2222
+
+Restrict SSH Access to Certain Users: Only allows specific users.
+AllowUsers alice bob
+DenyUsers hacker
+
+
+Enable Automatic Logout for Idle Users: Logs out users after 5 minutes of inactivity.
+ClientAliveInterval 300
+ClientAliveCountMax 0
+
+
+What is the SSH Daemon (sshd)?
+The SSH daemon (sshd) is a background process that runs on an SSH server and listens for incoming SSH connections. It is responsible for handling authentication, key exchanges, session encryption, and command execution for remote users.
+The SSH client (ssh) initiates a connection.
+The SSH daemon (sshd) running on the server processes the request.
+
+How sshd Works (Step-by-Step Flow)
+Step 1: sshd Starts and Listens for Connections
+The SSH daemon (sshd) starts automatically on boot.
+It listens on port 22 (by default) or a custom port.
+It waits for incoming SSH connection requests.
+Check sshd running or not ->
+sudo systemctl status sshd
+netstat -tlnp | grep ssh
+
+
+
+
+
+
+SSH HANDSHAKE
+Here's a simplified breakdown of the SSH handshake process:
+Client Initiation: The SSH client initiates a connection request to the server. 
+Server Response: The server responds, sending its public key and other parameters for negotiation. 
+Key Exchange: The client and server exchange information, including cryptographic algorithms, to establish a secure channel. 
+Authentication: The client authenticates itself to the server, often using a private key, and the server verifies the client's identity. 
+Secure Channel: Once authentication is successful, a secure channel is established for encrypted communication. 
+Session Setup: The server negotiates parameters and opens a secure channel for the client. 
+User Login: The user, through their client, can then log into the server. 
+
+Reference: 
+https://samuel-ricky.medium.com/how-ssh-secure-shell-works-af1ddd3e1b6b
+https://www.youtube.com/live/jA1IoEHcrIU?t=114s
+https://yabhinav.github.io/security/openssh-handshake-overview/
+
+
+Others:
+Man-in-the-Middle (MITM) Risk – Passwords can be intercepted if SSH is misconfigured.
+
+
+ssh daemon
+Port forwarding 
+Tunneling
+
+
+🛠️ Intermediate Topics
+SSH Key Management – Adding, removing, and managing multiple SSH keys.
+SSH Port Forwarding – Local, remote, and dynamic tunneling.
+SSH Multiplexing (ControlMaster) – Speeding up multiple SSH connections.
+SSH Security Best Practices – Hardening SSH against attacks.
+Restricting SSH Access – Using AllowUsers, DenyUsers, and PermitRootLogin.
+Logging and Monitoring SSH Access – Checking /var/log/auth.log and /var/log/secure.
+Setting Up SSH on a Jump Host – Secure access via an intermediate SSH server.
+Using SSH with Git and GitHub – Managing repositories over SSH.
+🚀 Advanced Topics
+Two-Factor Authentication (2FA) for SSH – Adding Google Authenticator or U2F keys.
+Chrooting SSH Users (ForceCommand & ChrootDirectory) – Restricting user access.
+Using SSH Certificates (ssh-keygen -s) – Centralized key management.
+SSH Bastion Hosts – Enhancing security with an intermediate jump server.
+Reverse SSH Tunneling – Accessing systems behind NAT or firewalls.
+SSH Socks Proxy (ssh -D) – Secure browsing via SSH tunnels.
+Automating SSH Tasks with Ansible – Running remote commands efficiently.
+Configuring Fail2Ban for SSH – Protecting against brute-force attacks.
+Setting Up an SSH Honeypot – Detecting unauthorized access attempts.
+Using sshfs for Remote Filesystem Mounting – Mounting remote directories locally.
+High-Performance SSH (Mosh) – Using mosh for a better SSH experience.
+Deep Dive into SSH Protocol Internals – Understanding SSH message exchange and encryption.
